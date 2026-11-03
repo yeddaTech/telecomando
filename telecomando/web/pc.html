@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telecomando</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f3f5f9; --card: #ffffff; --line: #e1e5ec; --text: #161a22; --muted: #5f6878;
+    --accent: #3a78f2; --accent-text: #ffffff; --accent-soft: rgba(58,120,242,.10);
+    --ok: #1b9a5f; --ok-soft: rgba(27,154,95,.12); --bad: #d64545; --bad-soft: rgba(214,69,69,.10);
+    --warn: #9a6400; --warn-soft: #fff4dc; --warn-line: #f1d9a3; --code: #eef1f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #101217; --card: #191c23; --line: #2d323d; --text: #e9ebf1; --muted: #9aa1af;
+      --accent: #4f8cff; --accent-text: #ffffff; --accent-soft: rgba(79,140,255,.14);
+      --ok: #3ecf8e; --ok-soft: rgba(62,207,142,.14); --bad: #ff6b6b; --bad-soft: rgba(255,107,107,.12);
+      --warn: #f3c565; --warn-soft: #2a2416; --warn-line: #5a4a24; --code: #232731;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { background: var(--bg); }
+  body { margin: 0; color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif; }
+  main { max-width: 780px; margin: 0 auto; padding: 28px 16px 40px; }
+  button { font: inherit; cursor: pointer; }
+  code, pre { font-family: ui-monospace, "Cascadia Mono", "DejaVu Sans Mono", Menlo, monospace; font-size: 13px; }
+
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { width: 40px; height: 40px; flex: none; }
+  header h1 { font-size: 21px; margin: 0; flex: 1; letter-spacing: -.01em; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .pill.ok { color: var(--ok); background: var(--ok-soft); }
+  .pill.warn { color: var(--warn); background: var(--warn-soft); }
+  .pill.off { color: var(--bad); background: var(--bad-soft); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; margin-bottom: 14px; }
+  .pair { display: grid; grid-template-columns: 236px 1fr; gap: 26px; align-items: center; }
+  .qr { width: 236px; aspect-ratio: 1; background: #fff; border-radius: 14px; padding: 8px; border: 1px solid #e1e5ec; display: grid; place-items: center; color: #5f6878; text-align: center; font-size: 13px; }
+  .qr svg { width: 100%; height: 100%; display: block; }
+  .pair h2 { margin: 0 0 10px; font-size: 19px; letter-spacing: -.01em; }
+  .pair ol { margin: 0 0 16px; padding-left: 20px; color: var(--muted); }
+  .pair li { margin: 3px 0; }
+  .pair li b { color: var(--text); font-weight: 600; }
+  .link { display: flex; gap: 8px; align-items: center; background: var(--code); border-radius: 10px; padding: 6px 6px 6px 12px; }
+  .link code { flex: 1; min-width: 0; overflow-wrap: anywhere; user-select: all; }
+  .small-btn { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 8px; padding: 5px 12px; font-size: 13px; }
+  .phones { margin: 14px 0 0; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+  .phones .n { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 12px; background: var(--line); color: var(--text); font-weight: 700; font-size: 13px; }
+  .phones.some .n { background: var(--ok-soft); color: var(--ok); }
+
+  .notice { border-color: var(--warn-line); background: var(--warn-soft); }
+  .notice h2 { margin: 0 0 6px; font-size: 17px; }
+  .notice p { margin: 0 0 12px; }
+  .notice pre { margin: 10px 0 0; padding: 10px 12px; background: var(--card); border: 1px solid var(--warn-line); border-radius: 10px; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .primary { border: 0; background: var(--accent); color: var(--accent-text); border-radius: 10px; padding: 9px 18px; font-weight: 600; }
+  .primary:disabled { opacity: .6; cursor: default; }
+
+  .settings { padding: 6px 22px; }
+  .setting { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .setting:first-child { border-top: 0; }
+  .setting > div { flex: 1; min-width: 0; }
+  .setting strong { display: block; font-weight: 600; }
+  .setting small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 8px 16px; white-space: nowrap; }
+  .btn.danger { color: var(--bad); border-color: var(--bad-soft); background: var(--bad-soft); }
+
+  .switch { position: relative; width: 46px; height: 26px; flex: none; }
+  .switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+  .switch span { position: absolute; inset: 0; border-radius: 13px; background: var(--line); transition: background .15s; }
+  .switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
+  .switch input:checked + span { background: var(--accent); }
+  .switch input:checked + span::after { transform: translateX(20px); }
+  .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  details.card { padding: 0; }
+  details summary { cursor: pointer; padding: 16px 22px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: "+"; color: var(--muted); font-weight: 400; font-size: 20px; line-height: 1; }
+  details[open] summary::after { content: "−"; }
+  details .body { padding: 0 22px 16px; color: var(--muted); }
+  details .body p { margin: 0 0 10px; }
+  details .body b { color: var(--text); }
+
+  footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 22px; }
+  .stopped { text-align: center; padding: 60px 22px; }
+  .stopped h2 { margin: 0 0 8px; }
+  .stopped p { color: var(--muted); margin: 0; }
+
+  @media (max-width: 640px) {
+    main { padding-top: 18px; }
+    .pair { grid-template-columns: 1fr; justify-items: center; text-align: left; }
+    .pair > div:last-child { width: 100%; }
+    .setting { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="/icon.svg" alt="">
+    <h1>Telecomando</h1>
+    <span id="pill" class="pill warn"></span>
+  </header>
+
+  <div id="content">
+    <section class="card pair">
+      <div class="qr" id="qr"></div>
+      <div>
+        <h2 data-t="pairTitle"></h2>
+        <ol>
+          <li data-t-html="step1"></li>
+          <li data-t-html="step2"></li>
+          <li data-t-html="step3"></li>
+        </ol>
+        <div class="link"><code id="url"></code><button class="small-btn" id="copy" data-t="copy"></button></div>
+        <p class="phones" id="phones"><span class="n" id="count">0</span><span id="phonesText"></span></p>
+      </div>
+    </section>
+
+    <section class="card notice" id="setup" hidden>
+      <h2 data-t="setupTitle"></h2>
+      <p data-t="setupText"></p>
+      <button class="primary" id="setupBtn" data-t="setupBtn"></button>
+      <p style="margin:14px 0 0" data-t="setupManual"></p>
+      <pre id="setupCmd"></pre>
+    </section>
+
+    <section class="card notice" id="problem" hidden>
+      <h2 data-t="problemTitle"></h2>
+      <p id="problemText"></p>
+    </section>
+
+    <section class="card settings">
+      <div class="setting" id="autostartRow">
+        <div><strong data-t="autostart"></strong><small data-t="autostartHelp"></small></div>
+        <label class="switch"><input type="checkbox" id="autostart" role="switch"><span></span></label>
+      </div>
+      <div class="setting">
+        <div><strong data-t="newCode"></strong><small data-t="newCodeHelp"></small></div>
+        <button class="btn" id="newCode" data-t="newCodeBtn"></button>
+      </div>
+      <div class="setting">
+        <div><strong data-t="stop"></strong><small data-t="stopHelp"></small></div>
+        <button class="btn danger" id="stop" data-t="stopBtn"></button>
+      </div>
+    </section>
+
+    <details class="card">
+      <summary data-t="helpTitle"></summary>
+      <div class="body">
+        <p data-t-html="helpWifi"></p>
+        <p id="helpFirewall"></p>
+        <p data-t-html="helpAdmin" id="helpAdmin"></p>
+        <p data-t-html="helpHome"></p>
+      </div>
+    </details>
+  </div>
+
+  <section class="card stopped" id="stoppedView" hidden>
+    <h2 data-t="stoppedTitle"></h2>
+    <p data-t="stoppedText"></p>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const TEXTS = {
+  en: {
+    running: 'Running', notReady: 'Setup needed', offline: 'Not running', dryRun: 'Test mode',
+    pairTitle: 'Connect your phone',
+    step1: 'Connect the phone to <b>the same Wi-Fi</b> as this PC.',
+    step2: '<b>Scan the QR code</b> with the phone camera and open the link.',
+    step3: 'Optional: in the browser menu choose <b>Add to Home screen</b>, so next time it opens like an app.',
+    copy: 'Copy', copied: 'Copied',
+    noPhones: 'No phone connected', onePhone: 'phone connected', manyPhones: 'phones connected',
+    noQr: 'Open the link below on the phone',
+    setupTitle: 'One more step, only the first time',
+    setupText: 'Linux asks for permission before a program can create a mouse and a keyboard. ' +
+               'Give it once: you will be asked for your password.',
+    setupBtn: 'Give permission', setupWaiting: 'Waiting for the password…', setupFailed: 'It did not work. You can run this command in a terminal instead:',
+    setupManual: 'Or run this command in a terminal:',
+    problemTitle: 'This PC cannot be controlled yet',
+    unsupported: 'This operating system is not supported: Telecomando works on Windows and Linux.',
+    autostart: 'Start when I log in', autostartHelp: 'Telecomando starts by itself, without opening this page.',
+    newCode: 'New access code', newCodeHelp: 'Phones already connected will have to scan the new QR code.',
+    newCodeBtn: 'Create', confirmNewCode: 'Create a new access code? Phones will have to scan the QR code again.',
+    stop: 'Stop Telecomando', stopHelp: 'Phones disconnect until you open Telecomando again.',
+    stopBtn: 'Stop', confirmStop: 'Stop Telecomando?',
+    helpTitle: 'The phone cannot connect?',
+    helpWifi: '<b>Same network:</b> the phone must be on the same Wi-Fi as the PC (not on mobile data, not on a guest network).',
+    firewallWindows: '<b>Windows firewall:</b> the first time, Windows asks whether to allow Telecomando: choose <b>Allow</b> for private networks. ' +
+                     'If you closed that window, open <i>Windows Security → Firewall &amp; network protection → Allow an app through firewall</i> ' +
+                     'and tick Telecomando under <b>Private</b>. The Wi-Fi itself must be set as a <b>private network</b> ' +
+                     '(<i>Settings → Network &amp; internet → Wi-Fi → your network</i>).',
+    firewallLinux: '<b>Firewall:</b> the one-time setup opens the port for the local network when ufw or firewalld is active. ' +
+                   'With another firewall, allow TCP port <b>{port}</b> from the local network.',
+    helpAdmin: '<b>Some windows do not react?</b> Windows does not let programs control windows opened as administrator. ' +
+               'To control those too, start Telecomando as administrator.',
+    helpHome: '<b>Privacy:</b> the phone talks directly to this PC over your network. Nothing goes through the internet, ' +
+              'there is no account and nothing is collected.',
+    stoppedTitle: 'Telecomando is stopped',
+    stoppedText: 'You can close this page. To use it again, open Telecomando again.',
+    footer: 'Telecomando {version} · everything stays on your network',
+  },
+  it: {
+    running: 'Attivo', notReady: 'Da configurare', offline: 'Non attivo', dryRun: 'Modalità prova',
+    pairTitle: 'Collega il telefono',
+    step1: 'Collega il telefono <b>allo stesso Wi-Fi</b> di questo PC.',
+    step2: '<b>Inquadra il QR code</b> con la fotocamera del telefono e apri il link.',
+    step3: 'Facoltativo: nel menu del browser scegli <b>Aggiungi a schermata Home</b>, così la prossima volta si apre come un\'app.',
+    copy: 'Copia', copied: 'Copiato',
+    noPhones: 'Nessun telefono collegato', onePhone: 'telefono collegato', manyPhones: 'telefoni collegati',
+    noQr: 'Apri sul telefono il link qui sotto',
+    setupTitle: 'Ancora un passo, solo la prima volta',
+    setupText: 'Linux chiede il permesso prima che un programma possa creare un mouse e una tastiera. ' +
+               'Dallo una volta sola: ti verrà chiesta la password.',
+    setupBtn: 'Dai il permesso', setupWaiting: 'In attesa della password…', setupFailed: 'Non ha funzionato. Puoi invece eseguire questo comando in un terminale:',
+    setupManual: 'Oppure esegui questo comando in un terminale:',
+    problemTitle: 'Questo PC non si può ancora comandare',
+    unsupported: 'Questo sistema operativo non è supportato: Telecomando funziona su Windows e Linux.',
+    autostart: 'Avvia quando accedo', autostartHelp: 'Telecomando parte da solo, senza aprire questa pagina.',
+    newCode: 'Nuovo codice di accesso', newCodeHelp: 'I telefoni già collegati dovranno inquadrare il nuovo QR code.',
+    newCodeBtn: 'Crea', confirmNewCode: 'Creare un nuovo codice di accesso? I telefoni dovranno inquadrare di nuovo il QR code.',
+    stop: 'Ferma Telecomando', stopHelp: 'I telefoni si scollegano finché non riapri Telecomando.',
+    stopBtn: 'Ferma', confirmStop: 'Fermare Telecomando?',
+    helpTitle: 'Il telefono non si collega?',
+    helpWifi: '<b>Stessa rete:</b> il telefono deve essere sullo stesso Wi-Fi del PC (non con i dati mobili, non su una rete ospiti).',
+    firewallWindows: '<b>Firewall di Windows:</b> la prima volta Windows chiede se consentire Telecomando: scegli <b>Consenti</b> per le reti private. ' +
+                     'Se hai chiuso quella finestra, apri <i>Sicurezza di Windows → Firewall e protezione della rete → Consenti app attraverso il firewall</i> ' +
+                     'e spunta Telecomando sotto <b>Privata</b>. Il Wi-Fi deve essere impostato come <b>rete privata</b> ' +
+                     '(<i>Impostazioni → Rete e Internet → Wi-Fi → la tua rete</i>).',
+    firewallLinux: '<b>Firewall:</b> la configurazione iniziale apre la porta alla rete locale se è attivo ufw o firewalld. ' +
+                   'Con un altro firewall, consenti la porta TCP <b>{port}</b> dalla rete locale.',
+    helpAdmin: '<b>Alcune finestre non reagiscono?</b> Windows non lascia comandare le finestre aperte come amministratore. ' +
+               'Per comandare anche quelle, avvia Telecomando come amministratore.',
+    helpHome: '<b>Privacy:</b> il telefono parla direttamente con questo PC attraverso la tua rete. Niente passa da internet, ' +
+              'non ci sono account e non viene raccolto nulla.',
+    stoppedTitle: 'Telecomando è fermo',
+    stoppedText: 'Puoi chiudere questa pagina. Per usarlo di nuovo, riapri Telecomando.',
+    footer: 'Telecomando {version} · tutto resta nella tua rete',
+  },
+};
+const LANG = /^it\b/i.test(navigator.language || '') ? 'it' : 'en';
+const T = TEXTS[LANG];
+document.documentElement.lang = LANG;
+for (const el of $$('[data-t]')) el.textContent = T[el.dataset.t];
+for (const el of $$('[data-t-html]')) el.innerHTML = T[el.dataset.tHtml];
+
+async function api(path, body) {
+  const options = body === undefined ? {} : {
+    method: 'POST', body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json', 'X-Telecomando': '1' },
+  };
+  const response = await fetch(path, options);
+  if (!response.ok) throw new Error(response.status);
+  return response.json();
+}
+
+let last = {}, timer = 0, stopped = false;
+
+function pill(kind, text) { const p = $('#pill'); p.className = 'pill ' + kind; p.textContent = text; }
+
+function render(s) {
+  if (s.url !== last.url) {
+    $('#url').textContent = s.url;
+    if (s.qr) $('#qr').innerHTML = s.qr; else $('#qr').textContent = T.noQr;  // SVG made by Telecomando itself
+  }
+  if (s.ready) pill('ok', s.dryRun ? T.dryRun : T.running);
+  else pill('warn', T.notReady);
+
+  const n = s.phones.length;
+  $('#count').textContent = n;
+  $('#phones').classList.toggle('some', n > 0);
+  $('#phonesText').textContent = n === 0 ? T.noPhones
+    : `${n === 1 ? T.onePhone : T.manyPhones} (${s.phones.join(', ')})`;
+
+  $('#setup').hidden = s.problem !== 'setup';
+  $('#setupCmd').textContent = s.setupCommand;
+  const busy = s.setupRunning;
+  $('#setupBtn').disabled = busy;
+  $('#setupBtn').textContent = busy ? T.setupWaiting : T.setupBtn;
+
+  $('#problem').hidden = !(s.problem === 'unsupported' || s.problem === 'error');
+  $('#problemText').textContent = s.problem === 'unsupported' ? T.unsupported : (s.detail || '');
+
+  $('#autostartRow').hidden = s.autostart === null;
+  if (s.autostart !== null && document.activeElement !== $('#autostart')) $('#autostart').checked = s.autostart;
+
+  $('#helpFirewall').innerHTML = (s.os === 'windows' ? T.firewallWindows : T.firewallLinux).replace('{port}', s.port);
+  $('#helpAdmin').hidden = s.os !== 'windows';
+  $('#footer').textContent = T.footer.replace('{version}', s.version);
+  last = s;
+}
+
+function showStopped() {
+  stopped = true;
+  clearInterval(timer);
+  $('#content').hidden = true;
+  $('#stoppedView').hidden = false;
+  pill('off', T.offline);
+}
+
+async function refresh() {
+  if (stopped) return;
+  try { render(await api('/pc/state')); }
+  catch { if (last.url) showStopped(); else pill('off', T.offline); }
+}
+
+$('#copy').addEventListener('click', async () => {
+  const text = $('#url').textContent;
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const range = document.createRange();
+    range.selectNodeContents($('#url'));
+    getSelection().removeAllRanges(); getSelection().addRange(range);
+    document.execCommand('copy');
+  }
+  $('#copy').textContent = T.copied;
+  setTimeout(() => { $('#copy').textContent = T.copy; }, 1500);
+});
+
+$('#autostart').addEventListener('change', async e => {
+  try { render(await api('/pc/autostart', { enabled: e.target.checked })); } catch { refresh(); }
+});
+
+$('#newCode').addEventListener('click', async () => {
+  if (!confirm(T.confirmNewCode)) return;
+  try { render(await api('/pc/new-code', {})); } catch { refresh(); }
+});
+
+$('#stop').addEventListener('click', async () => {
+  if (!confirm(T.confirmStop)) return;
+  try { await api('/pc/stop', {}); } catch {}
+  showStopped();
+});
+
+$('#setupBtn').addEventListener('click', async () => {
+  $('#setupBtn').disabled = true;
+  $('#setupBtn').textContent = T.setupWaiting;
+  try {
+    const s = await api('/pc/setup', {});
+    render(s);
+    if (s.problem === 'setup') $('[data-t="setupManual"]').textContent = T.setupFailed;
+  } catch { refresh(); }
+});
+
+refresh();
+timer = setInterval(refresh, 2000);
+</script>
+</body>
+</html>

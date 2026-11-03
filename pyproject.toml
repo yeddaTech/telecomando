@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "telecomando"
+dynamic = ["version"]
+description = "Use your phone as the touchpad and keyboard of your PC (Windows and Linux), over your own Wi-Fi."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["remote", "mouse", "keyboard", "touchpad", "phone", "wayland", "uinput"]
+classifiers = [
+    "Environment :: Web Environment",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/yeddaTech/telecomando"
+
+[project.scripts]
+telecomando = "telecomando.app:main"
+
+[tool.setuptools]
+packages = ["telecomando"]
+
+[tool.setuptools.package-data]
+telecomando = ["web/*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "telecomando.__version__"}

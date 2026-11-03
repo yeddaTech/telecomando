@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#101217">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Telecomando">
+<title>Telecomando</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<style>
+  :root {
+    --bg: #101217; --panel: #191c23; --pad: #1d2129; --key: #262a34; --key-hi: #343a47;
+    --line: #2d323d; --text: #e9ebf1; --muted: #8b92a1; --accent: #4f8cff; --accent-soft: rgba(79,140,255,.18);
+    --ok: #3ecf8e; --bad: #ff6464;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: var(--bg); }
+  body { color: var(--text); font: 15px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button { font: inherit; color: inherit; border: 0; background: none; padding: 0; }
+  [hidden] { display: none !important; }
+
+  #app {
+    position: fixed; left: 0; right: 0; top: 0; height: 100%;
+    display: flex; flex-direction: column; gap: 8px;
+    padding: max(8px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
+
+  header { display: flex; align-items: center; gap: 6px; min-height: 40px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); flex: none; margin: 0 4px; transition: background .2s; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 0 4px rgba(62,207,142,.15); }
+  .title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .title strong { font-size: 15px; }
+  .title small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--muted); }
+  .icon.on { background: var(--accent-soft); color: var(--accent); }
+  .icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  #pad {
+    flex: 1; min-height: 110px; position: relative; border-radius: 20px; border: 1px solid var(--line);
+    background-color: var(--pad);
+    background-image: radial-gradient(circle, rgba(255,255,255,.07) 1px, transparent 1.2px);
+    background-size: 22px 22px; background-position: center;
+    display: grid; place-items: center; transition: border-color .15s;
+  }
+  #pad.touching { border-color: var(--accent); }
+  #pad .hint { color: var(--muted); text-align: center; font-size: 13px; line-height: 1.6; opacity: .75; pointer-events: none; margin: 0 16px; }
+
+  .mouse { display: flex; gap: 8px; height: 54px; flex: none; }
+  .mb { flex: 1; border-radius: 16px; background: var(--key); color: var(--muted); font-size: 13px; }
+  .mb.mid { flex: 0 0 44px; position: relative; }
+  .mb.mid::after { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 18px; margin: -9px 0 0 -2px; border-radius: 2px; background: currentColor; opacity: .6; }
+  .down { background: var(--key-hi) !important; color: var(--text) !important; transform: scale(.97); }
+
+  #panel { display: flex; flex-direction: column; gap: 6px; flex: none; }
+  .typerow { display: flex; gap: 6px; position: relative; }
+  #kb {
+    flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel);
+    color: var(--text); font-size: 16px; padding: 0 12px; outline: none; caret-color: var(--accent);
+  }
+  #kb:focus { border-color: var(--accent); }
+  .typerow .ph { position: absolute; left: 13px; top: 0; line-height: 44px; color: var(--muted); font-size: 15px; pointer-events: none; }
+  .typerow:focus-within .ph { display: none; }
+
+  .row { display: flex; gap: 6px; }
+  .mod { flex: 1; height: 36px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  .mod.once { border-color: var(--accent); color: var(--accent); }
+  .mod.lock { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .tabs { display: flex; background: var(--panel); border-radius: 10px; padding: 3px; }
+  .tabs button { flex: 1; height: 28px; border-radius: 8px; font-size: 12.5px; color: var(--muted); }
+  .tabs button.on { background: var(--key-hi); color: var(--text); }
+
+  .grid { display: grid; grid-template-columns: repeat(var(--cols, 7), 1fr); grid-template-rows: 42px 42px; gap: 6px; }
+  .k { border-radius: 10px; background: var(--key); font-size: 13px; white-space: nowrap; overflow: hidden; padding: 0 2px; }
+  .grid[data-pane="cmds"] .k { font-size: 12px; }
+  .k.wide { grid-column: span 2; }
+  .k.accent { background: var(--accent-soft); color: var(--accent); }
+
+  .sheet {
+    position: fixed; inset: 0; background: rgba(5,6,9,.72); display: flex; align-items: flex-end; justify-content: center;
+    padding: 12px; touch-action: pan-y; z-index: 10;
+  }
+  .card {
+    width: 100%; max-width: 480px; max-height: 100%; overflow: auto; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 20px; padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+  }
+  .card h2 { margin: 0 0 14px; font-size: 18px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+  .field output { color: var(--muted); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .check { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .check input { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }
+  .help { color: var(--muted); font-size: 13px; line-height: 1.55; padding: 12px 0 4px; border-top: 1px solid var(--line); margin: 0; }
+  .help b { color: var(--text); font-weight: 600; }
+  .primary { width: 100%; height: 46px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 600; margin-top: 12px; }
+  #auth .card { text-align: center; align-self: center; }
+  #auth .big { font-size: 40px; margin-bottom: 6px; }
+  #auth p { color: var(--muted); line-height: 1.5; margin: 8px 0 0; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span id="dot" class="dot"></span>
+    <div class="title"><strong>Telecomando</strong><small id="status" data-t="connecting"></small></div>
+    <button id="btnKb" class="icon" data-t-label="keyboard">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M8 14h8"/></svg>
+    </button>
+    <button id="btnCfg" class="icon" data-t-label="settings">
+      <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    </button>
+    <button id="btnFs" class="icon" data-t-label="fullscreen">
+      <svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+    </button>
+  </header>
+
+  <div id="pad"><p class="hint" data-t-html="hint"></p></div>
+
+  <div class="mouse">
+    <button class="mb" data-btn="left" data-t="left"></button>
+    <button class="mb mid" data-btn="middle" data-t-label="middle"></button>
+    <button class="mb" data-btn="right" data-t="right"></button>
+  </div>
+
+  <section id="panel" hidden>
+    <div class="typerow">
+      <input id="kb" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="enter" data-t-label="typeLabel">
+      <span class="ph" data-t="typeHere"></span>
+      <button class="k accent" data-key="enter" style="width:56px" data-t="enter"></button>
+    </div>
+    <div class="row">
+      <button class="mod" data-mod="ctrl">Ctrl</button>
+      <button class="mod" data-mod="alt">Alt</button>
+      <button class="mod" data-mod="shift" data-t="shift"></button>
+      <button class="mod" data-mod="super" id="superMod">Super</button>
+      <button class="mod" data-mod="altgr">AltGr</button>
+    </div>
+    <nav class="tabs">
+      <button data-tab="keys" class="on" data-t="tabKeys"></button>
+      <button data-tab="cmds" data-t="tabCmds"></button>
+      <button data-tab="media" data-t="tabMedia"></button>
+      <button data-tab="fn">F1–F12</button>
+    </nav>
+    <div class="grid" data-pane="keys">
+      <button class="k" data-key="esc">Esc</button>
+      <button class="k" data-key="tab">Tab</button>
+      <button class="k" data-key="home" data-t="home"></button>
+      <button class="k" data-key="up">↑</button>
+      <button class="k" data-key="end" data-t="end"></button>
+      <button class="k" data-key="pageup" data-t="pageUp"></button>
+      <button class="k" data-key="backspace">⌫</button>
+      <button class="k" data-key="delete" data-t="del"></button>
+      <button class="k" data-key="print" data-t="print"></button>
+      <button class="k" data-key="left">←</button>
+      <button class="k" data-key="down">↓</button>
+      <button class="k" data-key="right">→</button>
+      <button class="k" data-key="pagedown" data-t="pageDown"></button>
+      <button class="k" data-key="space" data-t="space"></button>
+    </div>
+    <div class="grid" data-pane="cmds" style="--cols:6" hidden>
+      <button class="k" data-combo="ctrl+c" data-t="copy"></button>
+      <button class="k" data-combo="ctrl+v" data-t="paste"></button>
+      <button class="k" data-combo="ctrl+x" data-t="cut"></button>
+      <button class="k" data-combo="ctrl+z" data-t="undo"></button>
+      <button class="k" data-combo="ctrl+a" data-t="selectAll"></button>
+      <button class="k" data-combo="ctrl+f" data-t="find"></button>
+      <button class="k" data-combo="alt+tab">Alt+Tab</button>
+      <button class="k" data-combo="super" id="superCmd"></button>
+      <button class="k" data-combo="alt+f4" data-t="closeWin"></button>
+      <button class="k" data-combo="ctrl+t" data-t="newTab"></button>
+      <button class="k" data-combo="ctrl+w" data-t="closeTab"></button>
+      <button class="k" data-combo="f5" data-t="reload"></button>
+    </div>
+    <div class="grid" data-pane="media" style="--cols:5" hidden>
+      <button class="k" data-key="voldown" data-t="volDown"></button>
+      <button class="k" data-key="mute" data-t="mute"></button>
+      <button class="k" data-key="volup" data-t="volUp"></button>
+      <button class="k" data-key="brightdown" data-t="brightDown"></button>
+      <button class="k" data-key="brightup" data-t="brightUp"></button>
+      <button class="k" data-key="prev">⏮</button>
+      <button class="k wide" data-key="playpause" data-t="playPause"></button>
+      <button class="k" data-key="next">⏭</button>
+      <button class="k" data-action="lock" data-t="lock"></button>
+    </div>
+    <div class="grid" data-pane="fn" style="--cols:6" hidden>
+      <button class="k" data-key="f1">F1</button><button class="k" data-key="f2">F2</button>
+      <button class="k" data-key="f3">F3</button><button class="k" data-key="f4">F4</button>
+      <button class="k" data-key="f5">F5</button><button class="k" data-key="f6">F6</button>
+      <button class="k" data-key="f7">F7</button><button class="k" data-key="f8">F8</button>
+      <button class="k" data-key="f9">F9</button><button class="k" data-key="f10">F10</button>
+      <button class="k" data-key="f11">F11</button><button class="k" data-key="f12">F12</button>
+    </div>
+  </section>
+</div>
+
+<div id="cfg" class="sheet" hidden>
+  <div class="card">
+    <h2 data-t="settings"></h2>
+    <div class="field">
+      <label for="speed"><span data-t="speed"></span> <output id="speedOut"></output></label>
+      <input id="speed" type="range" min="0.5" max="5" step="0.1">
+    </div>
+    <div class="field">
+      <label for="scroll"><span data-t="scrollSpeed"></span> <output id="scrollOut"></output></label>
+      <input id="scroll" type="range" min="0.2" max="3" step="0.1">
+    </div>
+    <label class="check"><span data-t="natural"></span> <input id="natural" type="checkbox"></label>
+    <label class="check"><span data-t="tapClick"></span> <input id="tap" type="checkbox"></label>
+    <label class="check"><span data-t="vibration"></span> <input id="vibe" type="checkbox"></label>
+    <p class="help" data-t-html="help"></p>
+    <button class="primary" id="cfgClose" data-t="done"></button>
+  </div>
+</div>
+
+<div id="auth" class="sheet" hidden>
+  <div class="card">
+    <div class="big">🔒</div>
+    <h2 data-t="authTitle"></h2>
+    <p data-t-html="authText"></p>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------------------------------------------------------------- languages
+const TEXTS = {
+  en: {
+    connecting: 'Connecting…', keyboard: 'Keyboard', settings: 'Settings', fullscreen: 'Full screen',
+    hint: 'Drag to move · tap to click<br>Two fingers to scroll · two-finger tap = right click',
+    left: 'Left', middle: 'Middle', right: 'Right',
+    typeLabel: 'Type on the PC', typeHere: 'Tap here to type on the PC…', enter: 'Enter', shift: 'Shift',
+    tabKeys: 'Keys', tabCmds: 'Shortcuts', tabMedia: 'Media',
+    home: 'Home', end: 'End', pageUp: 'PgUp', pageDown: 'PgDn', del: 'Del', print: 'PrtSc', space: 'Space',
+    copy: 'Copy', paste: 'Paste', cut: 'Cut', undo: 'Undo', selectAll: 'Sel. all', find: 'Find',
+    apps: 'Apps', start: 'Start', closeWin: 'Close', newTab: '+ Tab', closeTab: '× Tab', reload: 'Reload',
+    volDown: 'Vol −', mute: 'Mute', volUp: 'Vol +', brightDown: 'Bright −', brightUp: 'Bright +',
+    playPause: '⏯ Play/Pause', lock: 'Lock',
+    speed: 'Pointer speed', scrollSpeed: 'Scroll speed', natural: 'Natural scrolling (like on the phone)',
+    tapClick: 'Tap to click', vibration: 'Vibration',
+    help: '<b>1 finger</b>: move · <b>tap</b>: click · <b>double tap</b>: double click<br>' +
+          '<b>Tap, then drag</b> right away: drag or select<br>' +
+          '<b>2 fingers</b>: scroll · <b>2-finger tap</b>: right click · <b>3-finger tap</b>: middle click<br>' +
+          '<b>Ctrl/Alt/Shift…</b>: 1 tap = only for the next key, 2 taps = locked ' +
+          '(e.g. lock Alt, then Tab, Tab… to pick a window)',
+    done: 'Done',
+    authTitle: 'Access code needed',
+    authText: 'Open Telecomando on the PC and scan its QR code, or open the full link ' +
+              '(the one ending in <code>?k=…</code>).',
+    keyboardLayout: 'keyboard', stopped: 'Telecomando was stopped on the PC',
+    retrying: 'Not connected, retrying…', noCode: 'Access code missing',
+    notReady: 'Needs setup on the PC',
+  },
+  it: {
+    connecting: 'Connessione…', keyboard: 'Tastiera', settings: 'Impostazioni', fullscreen: 'Schermo intero',
+    hint: 'Trascina per muovere · tocca per cliccare<br>Due dita per scorrere · tocco con due dita = destro',
+    left: 'Sinistro', middle: 'Centrale', right: 'Destro',
+    typeLabel: 'Scrivi sul PC', typeHere: 'Tocca qui per scrivere sul PC…', enter: 'Invio', shift: 'Maiusc',
+    tabKeys: 'Tasti', tabCmds: 'Comandi', tabMedia: 'Media',
+    home: 'Inizio', end: 'Fine', pageUp: 'Pag↑', pageDown: 'Pag↓', del: 'Canc', print: 'Stamp', space: 'Spazio',
+    copy: 'Copia', paste: 'Incolla', cut: 'Taglia', undo: 'Annulla', selectAll: 'Tutto', find: 'Cerca',
+    apps: 'Attività', start: 'Start', closeWin: 'Chiudi', newTab: '+Scheda', closeTab: '×Scheda', reload: 'Ricarica',
+    volDown: 'Vol −', mute: 'Muto', volUp: 'Vol +', brightDown: 'Lum −', brightUp: 'Lum +',
+    playPause: '⏯ Play/Pausa', lock: 'Blocca',
+    speed: 'Velocità puntatore', scrollSpeed: 'Velocità scorrimento', natural: 'Scorrimento naturale (come sul telefono)',
+    tapClick: 'Tocco = clic', vibration: 'Vibrazione',
+    help: '<b>1 dito</b>: muovi · <b>tocco</b>: clic · <b>doppio tocco</b>: doppio clic<br>' +
+          '<b>Tocca e poi trascina</b> subito: trascina o seleziona<br>' +
+          '<b>2 dita</b>: scorri · <b>tocco a 2 dita</b>: destro · <b>tocco a 3 dita</b>: centrale<br>' +
+          '<b>Ctrl/Alt/Maiusc…</b>: 1 tocco = solo per il prossimo tasto, 2 tocchi = bloccato ' +
+          '(es. Alt bloccato, poi Tab, Tab… per scegliere la finestra)',
+    done: 'Fatto',
+    authTitle: 'Serve il codice di accesso',
+    authText: 'Apri Telecomando sul PC e scansiona il suo QR code, oppure apri il link completo ' +
+              '(quello che finisce con <code>?k=…</code>).',
+    keyboardLayout: 'tastiera', stopped: 'Telecomando è stato fermato sul PC',
+    retrying: 'Non connesso, riprovo…', noCode: 'Codice di accesso mancante',
+    notReady: 'Da configurare sul PC',
+  },
+};
+const LANG = /^it\b/i.test(navigator.language || '') ? 'it' : 'en';
+const T = TEXTS[LANG];
+document.documentElement.lang = LANG;
+for (const el of $$('[data-t]')) el.textContent = T[el.dataset.t];
+for (const el of $$('[data-t-html]')) el.innerHTML = T[el.dataset.tHtml];
+for (const el of $$('[data-t-label]')) el.setAttribute('aria-label', T[el.dataset.tLabel]);
+$('#superCmd').textContent = T.apps;
+
+// -------------------------------------------------------------- access code
+// It stays in the address, so bookmarks and "Add to Home screen" keep working.
+const url = new URL(location.href);
+const token = url.searchParams.get('k') || store.get('k') || '';
+if (token) {
+  store.set('k', token);
+  if (url.searchParams.get('k') !== token) { url.searchParams.set('k', token); history.replaceState(null, '', url); }
+}
+
+// ----------------------------------------------------------------- settings
+const cfg = Object.assign({ speed: 2, scroll: 1, natural: true, tap: true, vibe: true }, store.get('cfg'));
+const vib = ms => { if (cfg.vibe && navigator.vibrate) navigator.vibrate(ms); };
+
+// ---------------------------------------------------------------- WebSocket
+let ws = null, retry = 0, retryTimer = 0, authFailed = false;
+
+function connect() {
+  clearTimeout(retryTimer);
+  if (ws || authFailed) return;
+  if (!token) return showAuth();
+  const sock = ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?k=${encodeURIComponent(token)}`);
+  sock.onopen = () => { retry = 0; };
+  sock.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.t === 'hello') applyHello(m);
+  };
+  sock.onclose = e => {
+    if (ws !== sock) return;
+    ws = null;
+    setStatus(false, e.code === 1001 ? T.stopped : T.retrying);
+    resetMods();
+    if (e.code === 4401) { authFailed = true; return showAuth(); }
+    retryTimer = setTimeout(connect, Math.min(4000, 250 * 2 ** retry++));
+  };
+}
+function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+function setStatus(on, text) { $('#dot').classList.toggle('on', on); $('#status').textContent = text; }
+function showAuth() { setStatus(false, T.noCode); $('#auth').hidden = false; }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) connect(); });
+
+// The PC says who it is and which keys it has (Windows has no brightness keys).
+function applyHello(m) {
+  const windows = m.os === 'windows';
+  $('#superMod').textContent = windows ? 'Win' : 'Super';
+  $('#superCmd').textContent = windows ? T.start : T.apps;
+  if (!m.ready) return setStatus(false, T.notReady);
+  for (const el of $$('[data-key]')) el.hidden = !m.keys.includes(el.dataset.key);
+  const media = $('[data-pane="media"]'), lockBtn = $('[data-action="lock"]');
+  const bright = m.keys.includes('brightup');
+  media.style.setProperty('--cols', bright ? 5 : 4);
+  if (bright) media.append(lockBtn); else $('[data-key="volup"]').after(lockBtn);
+  setStatus(true, `${m.host} · ${m.layout ? T.keyboardLayout + ' ' + m.layout : (windows ? 'Windows' : 'Linux')}`);
+}
+
+// ------------------------------------------------ fit the phone's keyboard
+const app = $('#app'), vv = window.visualViewport;
+function fit() {
+  app.style.height = (vv ? vv.height : innerHeight) + 'px';
+  app.style.top = (vv ? vv.offsetTop : 0) + 'px';
+}
+if (vv) { vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); }
+addEventListener('resize', fit);
+fit();
+
+// No zoom, scrolling or focus loss when the controls are touched
+// (so the phone keyboard stays open while you press arrows, ⌫, etc.).
+app.addEventListener('touchstart', e => { if (e.target !== kb) e.preventDefault(); }, { passive: false });
+
+function onTap(el, fn) {
+  el.addEventListener('pointerdown', e => { e.preventDefault(); el._tap = e.pointerId; });
+  el.addEventListener('pointerup', e => { if (el._tap === e.pointerId) { el._tap = null; fn(e); } });
+  el.addEventListener('pointercancel', () => { el._tap = null; });
+}
+
+// ---------------------------------------------------------------- modifiers
+// 0 = off, 1 = only for the next key, 2 = locked (held down on the PC)
+const MODS = ['ctrl', 'alt', 'shift', 'super', 'altgr'];
+const modState = Object.fromEntries(MODS.map(m => [m, 0]));
+
+function renderMods() {
+  for (const el of $$('[data-mod]')) {
+    const s = modState[el.dataset.mod];
+    el.classList.toggle('once', s === 1);
+    el.classList.toggle('lock', s === 2);
+  }
+}
+function resetMods() { for (const m of MODS) modState[m] = 0; renderMods(); }
+function takeOnceMods() {
+  const once = MODS.filter(m => modState[m] === 1);
+  if (once.length) { for (const m of once) modState[m] = 0; renderMods(); }
+  return once;
+}
+const pressMods = mods => mods.forEach(m => send({ t: 'key', k: m, a: 'down' }));
+const releaseMods = mods => [...mods].reverse().forEach(m => send({ t: 'key', k: m, a: 'up' }));
+function withMods(fn) { const m = takeOnceMods(); pressMods(m); fn(); releaseMods(m); }
+
+for (const el of $$('[data-mod]')) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const m = el.dataset.mod, s = modState[m], next = (s + 1) % 3;
+    if (next === 2) send({ t: 'key', k: m, a: 'down' });
+    if (s === 2) send({ t: 'key', k: m, a: 'up' });
+    modState[m] = next; renderMods(); vib(8);
+  });
+}
+
+// --------------------------------------------------- keys you can hold down
+// Held on the phone = held on the PC: holding ⌫ or the arrows repeats them.
+function holdable(el, press, release) {
+  const active = new Map();
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    try { el.setPointerCapture(e.pointerId); } catch {}
+    const mods = takeOnceMods();
+    pressMods(mods); press();
+    active.set(e.pointerId, mods);
+    el.classList.add('down'); vib(8);
+  });
+  const up = e => {
+    const mods = active.get(e.pointerId);
+    if (!mods) return;
+    active.delete(e.pointerId);
+    release(); releaseMods(mods);
+    if (!active.size) el.classList.remove('down');
+  };
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+}
+
+function onPress(el, fn) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault(); vib(8);
+    el.classList.add('down'); setTimeout(() => el.classList.remove('down'), 120);
+    fn();
+  });
+}
+
+for (const el of $$('[data-btn]')) {
+  const b = el.dataset.btn;
+  holdable(el, () => send({ t: 'btn', b, a: 'down' }), () => send({ t: 'btn', b, a: 'up' }));
+}
+for (const el of $$('[data-key]')) {
+  const k = el.dataset.key;
+  holdable(el, () => send({ t: 'key', k, a: 'down' }), () => send({ t: 'key', k, a: 'up' }));
+}
+for (const el of $$('[data-combo]')) {
+  const keys = el.dataset.combo.split('+');
+  onPress(el, () => withMods(() => send({ t: 'combo', keys })));
+}
+onPress($('[data-action="lock"]'), () => send({ t: 'lock' }));
+for (const el of $$('[data-tab]')) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    for (const t of $$('[data-tab]')) t.classList.toggle('on', t === el);
+    for (const p of $$('[data-pane]')) p.hidden = p.dataset.pane !== el.dataset.tab;
+  });
+}
+
+// ----------------------------------------------------------------- touchpad
+const pad = $('#pad');
+const TAP_MS = 250, TAP_MOVE = 10, SECOND_TAP_MS = 240;
+const pts = new Map();
+let g = null;          // gesture in progress
+let clickTimer = 0;    // delayed click: if another touch comes quickly it becomes a drag or double click
+let drag = null;       // modifiers held during a drag
+let cx = 0, cy = 0;    // centre of the fingers at the previous step
+let vel = { x: 0, y: 0, t: 0 }, inertia = 0;
+
+const centroid = () => {
+  let x = 0, y = 0;
+  for (const p of pts.values()) { x += p.x; y += p.y; }
+  return [x / (pts.size || 1), y / (pts.size || 1)];
+};
+const click = (b, dbl) => withMods(() => send({ t: 'btn', b, a: dbl ? 'dbl' : 'click' }));
+
+pad.addEventListener('touchstart', e => {
+  e.preventDefault();
+  cancelAnimationFrame(inertia);
+  for (const t of e.changedTouches) pts.set(t.identifier, { x: t.clientX, y: t.clientY, sx: t.clientX, sy: t.clientY });
+  if (!g) {
+    g = { t0: performance.now(), max: 0, moved: false, afterTap: false };
+    if (clickTimer) { clearTimeout(clickTimer); clickTimer = 0; g.afterTap = true; }
+    pad.classList.add('touching');
+    vel = { x: 0, y: 0, t: performance.now() };
+  }
+  g.max = Math.max(g.max, pts.size);
+  if (g.afterTap && pts.size > 1) { g.afterTap = false; click('left'); }
+  [cx, cy] = centroid();
+}, { passive: false });
+
+pad.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!g) return;
+  for (const t of e.changedTouches) {
+    const p = pts.get(t.identifier);
+    if (!p) continue;
+    p.x = t.clientX; p.y = t.clientY;
+    if (Math.hypot(p.x - p.sx, p.y - p.sy) > TAP_MOVE) g.moved = true;
+  }
+  const [nx, ny] = centroid(), dx = nx - cx, dy = ny - cy;
+  cx = nx; cy = ny;
+  if (g.max === 1) {
+    if (g.afterTap && g.moved && !drag) {
+      drag = takeOnceMods(); pressMods(drag);
+      send({ t: 'btn', b: 'left', a: 'down' }); vib(15);
+    }
+    queueMove(dx, dy);
+  } else if (pts.size >= 2) {
+    const now = performance.now(), dt = Math.max(1, now - vel.t);
+    vel = { x: .7 * vel.x + .3 * dx / dt, y: .7 * vel.y + .3 * dy / dt, t: now };
+    queueScroll(dx, dy);
+  }
+}, { passive: false });
+
+function touchEnd(e) {
+  e.preventDefault();
+  for (const t of e.changedTouches) pts.delete(t.identifier);
+  [cx, cy] = centroid();
+  if (pts.size || !g) return;
+  const gg = g;
+  g = null;
+  pad.classList.remove('touching');
+
+  if (drag) { send({ t: 'btn', b: 'left', a: 'up' }); releaseMods(drag); drag = null; return; }
+  if (gg.max >= 2 && gg.moved) return startInertia();
+
+  const tap = e.type === 'touchend' && !gg.moved && performance.now() - gg.t0 < TAP_MS;
+  if (gg.afterTap && !(tap && gg.max === 1)) click('left');  // the previous tap was a simple click
+  if (!tap || !cfg.tap) return;
+  vib(8);
+  if (gg.max === 1) {
+    if (gg.afterTap) return click('left', true);
+    clickTimer = setTimeout(() => { clickTimer = 0; click('left'); }, SECOND_TAP_MS);
+  } else {
+    click(gg.max === 2 ? 'right' : 'middle');
+  }
+}
+pad.addEventListener('touchend', touchEnd, { passive: false });
+pad.addEventListener('touchcancel', touchEnd, { passive: false });
+
+// Scrolling goes on by inertia after the fingers lift, like on the phone.
+function startInertia() {
+  if (performance.now() - vel.t > 60) return;
+  let { x, y } = vel, last = performance.now();
+  const step = now => {
+    const dt = Math.min(48, now - last);
+    last = now;
+    x *= Math.pow(.94, dt / 16); y *= Math.pow(.94, dt / 16);
+    if (Math.hypot(x, y) < .03) return;
+    queueScroll(x * dt, y * dt);
+    inertia = requestAnimationFrame(step);
+  };
+  inertia = requestAnimationFrame(step);
+}
+
+// Movements add up and are sent once per frame.
+let mx = 0, my = 0, sx = 0, sy = 0, frame = 0;
+function queueMove(dx, dy) { mx += dx * cfg.speed; my += dy * cfg.speed; schedule(); }
+function queueScroll(dx, dy) {
+  const k = 3 * cfg.scroll * (cfg.natural ? 1 : -1);  // unit: 1/120 of a wheel notch
+  sx -= dx * k; sy += dy * k; schedule();
+}
+function schedule() { if (!frame) frame = requestAnimationFrame(flush); }
+function flush() {
+  frame = 0;
+  const ix = Math.trunc(mx), iy = Math.trunc(my);
+  if (ix || iy) { send({ t: 'move', x: ix, y: iy }); mx -= ix; my -= iy; }
+  const jx = Math.trunc(sx), jy = Math.trunc(sy);
+  if (jx || jy) { send({ t: 'scroll', x: jx, y: jy }); sx -= jx; sy -= jy; }
+}
+
+// ----------------------------------------------------------------- typing
+// The field always holds an invisible character, so ⌫ works even when it looks empty.
+// After every change the text is compared with the previous one and the PC gets
+// the deletions and the new characters: autocorrect, suggestions and dictation work.
+const kb = $('#kb'), ZW = '​';
+let prevText = ZW, composing = false;
+function resetField() { kb.value = ZW; prevText = ZW; }
+function syncField() {
+  const a = [...prevText], b = [...kb.value];
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  const del = a.length - i, ins = b.slice(i).join('').replaceAll(ZW, '');
+  prevText = kb.value;
+  if (del || ins) withMods(() => {
+    if (del) send({ t: 'key', k: 'backspace', a: 'tap', n: del });
+    if (ins) send({ t: 'text', s: ins });
+  });
+  if (!composing && (b.length > 40 || b[0] !== ZW)) resetField();
+}
+resetField();
+kb.addEventListener('compositionstart', () => { composing = true; });
+kb.addEventListener('compositionend', () => { composing = false; syncField(); });
+kb.addEventListener('input', syncField);
+kb.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.keyCode === 13) {
+    e.preventDefault();
+    syncField();
+    withMods(() => send({ t: 'key', k: 'enter', a: 'tap' }));
+    resetField();
+  }
+});
+kb.addEventListener('focus', () => { const n = kb.value.length; kb.setSelectionRange(n, n); });
+
+// ------------------------------------------------------------------- header
+onTap($('#btnKb'), () => {
+  const panel = $('#panel'), open = panel.hidden;
+  panel.hidden = !open;
+  $('#btnKb').classList.toggle('on', open);
+  if (open) kb.focus(); else kb.blur();
+});
+
+const fsBtn = $('#btnFs');
+if (!document.fullscreenEnabled) fsBtn.hidden = true;
+onTap(fsBtn, () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+});
+
+// ----------------------------------------------------------- settings sheet
+const fmt = v => v.toFixed(1) + '×';
+for (const id of ['speed', 'scroll']) {
+  const input = $('#' + id), out = $('#' + id + 'Out');
+  input.value = cfg[id]; out.textContent = fmt(cfg[id]);
+  input.addEventListener('input', () => { cfg[id] = +input.value; out.textContent = fmt(cfg[id]); store.set('cfg', cfg); });
+}
+for (const id of ['natural', 'tap', 'vibe']) {
+  const input = $('#' + id);
+  input.checked = cfg[id];
+  input.addEventListener('change', () => { cfg[id] = input.checked; store.set('cfg', cfg); });
+}
+onTap($('#btnCfg'), () => { $('#cfg').hidden = false; });
+$('#cfgClose').addEventListener('click', () => { $('#cfg').hidden = true; });
+$('#cfg').addEventListener('click', e => { if (e.target.id === 'cfg') $('#cfg').hidden = true; });
+
+connect();
+</script>
+</body>
+</html>
