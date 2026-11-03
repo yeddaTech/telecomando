@@ -126,8 +126,16 @@ async def http(port, path, method='GET', host=None, headers=(), body=b''):
     head += 'Content-Length: %d\r\n\r\n' % len(body)
     writer.write(head.encode() + body)
     data = await reader.read()
-    writer.close()
+    await close(writer)
     return int(data.split(b' ', 2)[1]), data.partition(b'\r\n\r\n')[2]
+
+
+async def close(writer):
+    writer.close()
+    try:
+        await writer.wait_closed()
+    except (ConnectionError, OSError):
+        pass
 
 
 class WsClient:
@@ -180,6 +188,7 @@ class ServerTest(unittest.TestCase):
             self.assertTrue(await wrong.connect(port, 'wrong'))
             opcode, payload = await wrong.recv()
             self.assertEqual((opcode, struct.unpack('!H', payload[:2])[0]), (8, 4401))
+            await close(wrong.writer)
 
             phone = WsClient()
             self.assertTrue(await phone.connect(port, token))
@@ -200,6 +209,7 @@ class ServerTest(unittest.TestCase):
             self.assertEqual((opcode, struct.unpack('!H', payload[:2])[0]), (8, 4401))
             await asyncio.sleep(0.2)
             self.assertEqual(instance.backend.events[-1], ('key', 'shift', 'up'))  # released on disconnect
+            await close(phone.writer)
 
             status, body = await http(port, '/pc/stop', 'POST', headers=[('X-Telecomando', '1')], body=b'{}')
             self.assertEqual(json.loads(body)['app'], 'telecomando')
