@@ -18,6 +18,7 @@ import signal
 import socket
 import subprocess
 import sys
+import time
 import urllib.request
 import webbrowser
 from pathlib import Path
@@ -68,17 +69,16 @@ def save_token(directory, token):
 
 
 def load_token(directory, renew=False):
-    """The access code phones need; returns (code, True if it was just created)."""
-    if not renew:
-        try:
-            token = (directory / 'token').read_text(encoding='ascii').strip()
-            if len(token) >= 16:
-                return token, False
-        except (OSError, UnicodeError):
-            pass
-    token = secrets.token_urlsafe(12)
-    save_token(directory, token)
-    return token, True
+    """The access code phones need; returns (code, True on the very first start)."""
+    try:
+        token = (directory / 'token').read_text(encoding='ascii').strip()
+    except (OSError, UnicodeError):
+        token = ''
+    first_start = len(token) < 16
+    if first_start or renew:
+        token = secrets.token_urlsafe(12)
+        save_token(directory, token)
+    return token, first_start
 
 
 def lan_ip():
@@ -173,6 +173,16 @@ def set_autostart(args, enabled):
             autostart.disable()
     except OSError as e:
         log.warning('Cannot change the automatic start: %s', e)
+
+
+def keep_autostart(args, first_start):
+    """The downloaded app starts at every login, unless the user turns that off on the PC page."""
+    if not getattr(sys, 'frozen', False) or args.dry_run:
+        return  # started from the source code: the user decides
+    if first_start:
+        set_autostart(args, True)
+    elif not args.background and autostart.is_enabled():
+        set_autostart(args, True)  # points it at this copy, in case the folder was moved
 
 
 def create_backend(args):
@@ -493,6 +503,11 @@ def main(argv=None):
     running = local_call(args.port, '/pc/state')
     if args.stop:
         stopped = running and local_call(args.port, '/pc/stop', {})
+        if stopped:
+            for _ in range(25):  # wait until it has really let go of the port
+                time.sleep(0.2)
+                if not local_call(args.port, '/pc/state'):
+                    break
         print('Telecomando stopped.' if stopped else 'Telecomando is not running.')
         return 0
     if running:
@@ -510,8 +525,9 @@ def main(argv=None):
     directory = config_dir()
     setup_logging(directory)
     try:
-        token, first_run = load_token(directory, renew=args.new_code)
-        asyncio.run(App(args, token, directory).run(first_run))
+        token, first_start = load_token(directory, renew=args.new_code)
+        keep_autostart(args, first_start)
+        asyncio.run(App(args, token, directory).run(first_start))
     except KeyboardInterrupt:
         pass
     except OSError as e:

@@ -220,6 +220,32 @@ class ServerTest(unittest.TestCase):
                 await task
 
 
+# ------------------------------------------------------ first start, login
+
+class FirstStartTest(unittest.TestCase):
+    def test_token(self):
+        with tempfile.TemporaryDirectory() as directory:
+            token, first = app.load_token(Path(directory))
+            self.assertTrue(first)
+            self.assertEqual(app.load_token(Path(directory)), (token, False))
+            renewed, first = app.load_token(Path(directory), renew=True)
+            self.assertFalse(first)
+            self.assertNotEqual(renewed, token)
+
+    @unittest.skipUnless(sys.platform.startswith('linux'), 'Linux only')
+    def test_downloaded_app_starts_at_login(self):
+        args = app.parse_args([])
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, {'XDG_CONFIG_HOME': directory}):
+            app.keep_autostart(args, True)
+            self.assertFalse(autostart.is_enabled())  # from source code: left to the user
+            with mock.patch.object(sys, 'frozen', True, create=True):
+                app.keep_autostart(args, True)
+                self.assertTrue(autostart.is_enabled())  # first start of the downloaded app
+                autostart.disable()
+                app.keep_autostart(args, False)
+                self.assertFalse(autostart.is_enabled())  # turned off by the user: stays off
+
+
 # ----------------------------------------------------------------- systems
 
 class AutostartTest(unittest.TestCase):

@@ -49,8 +49,10 @@ echo
 "$dest/telecomando" --setup || echo "Permission setup skipped: Telecomando will offer it again when it starts."
 
 echo
-case ":$PATH:" in
-    *":$bin:"*) run="telecomando" ;;
-    *) run="$bin/telecomando" ;;
-esac
-echo "Done. Open Telecomando from the applications menu, or run:  $run"
+echo "Done. Telecomando is starting: its page with the QR code opens in your browser."
+echo "From now on it starts by itself every time you log in."
+if command -v setsid >/dev/null 2>&1; then
+    setsid "$dest/telecomando" </dev/null >/dev/null 2>&1 &
+else
+    nohup "$dest/telecomando" </dev/null >/dev/null 2>&1 &
+fi

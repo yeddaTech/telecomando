@@ -19,6 +19,7 @@
 
 - **Touchpad**: muovi con un dito, tocca per cliccare, scorri con due dita (continua per inerzia), tocca con due dita per il tasto destro, tocca e trascina per selezionare.
 - **Tastiera**: scrivi con la tastiera del telefono, compresi correttore, suggerimenti, dettatura, accenti ed emoji. In più Esc, frecce, F1–F12, Ctrl/Alt/Maiusc/Win (per un tasto o bloccati), comandi come copia, incolla e Alt+Tab, tasti multimediali e blocco schermo.
+- **Si configura una volta**: inquadri il QR code la prima volta. Da lì in poi Telecomando parte con il PC, in background, e il telefono si collega da solo.
 - **Nessuna app sul telefono**: è una pagina che il PC stesso offre al browser del telefono.
 - **Privato**: telefono e PC parlano direttamente attraverso il tuo Wi-Fi. Niente account, niente cloud, niente pubblicità, nessun dato raccolto. Una volta scaricato, il programma è tutto tuo.
 
@@ -28,13 +29,14 @@ Prendi l'ultima versione dalla **[pagina Releases](../../releases/latest)**.
 
 ### Windows 10 e 11
 
-1. Scarica `Telecomando-…-windows-x64.zip` ed estrailo (tasto destro → *Estrai tutto*).
+1. Scarica `Telecomando-…-windows-x64.zip`. Tasto destro sul file → *Proprietà* → spunta **Annulla blocco** → *OK*, poi estrailo (tasto destro → *Estrai tutto*) in una cartella dove resterà, ad esempio Documenti.
 2. Apri **Telecomando.exe** nella cartella estratta.
-   Windows potrebbe dire *"PC protetto da Windows"*, perché il programma non è firmato con un certificato a pagamento: fai clic su **Ulteriori informazioni → Esegui comunque**.
+   Se Windows dice *"PC protetto da Windows"* (il programma non è firmato con un certificato a pagamento), fai clic su **Ulteriori informazioni → Esegui comunque**.
 3. Quando Windows chiede del firewall, consenti l'accesso sulle **reti private**.
 4. Nel browser si apre una pagina con un QR code: inquadralo con il telefono, collegato allo stesso Wi-Fi.
 
-Da quella pagina puoi anche fermare Telecomando, farlo partire da solo all'accesso o creare un nuovo codice di accesso. Per rivederla, riapri Telecomando.exe.
+Fatto. Da ora Telecomando parte da solo, in background, ogni volta che accedi al PC: non devi aprire niente.
+Per rivedere la pagina con il QR code, riapri Telecomando.exe. Da quella pagina puoi anche fermare Telecomando, spegnere l'avvio automatico o creare un nuovo codice di accesso. Se sposti la cartella, apri una volta Telecomando.exe dalla nuova posizione.
 
 ### Linux
 
@@ -46,7 +48,9 @@ Per PC a 64 bit con una distribuzione recente (Ubuntu 22.04 o successive, Debian
    ./install.sh
    ```
    Ti chiede la password una volta sola. Linux vuole un permesso prima che un programma possa creare un mouse e una tastiera virtuali; se c'è un firewall attivo (ufw o firewalld), la configurazione lascia anche che la rete di casa raggiunga Telecomando.
-3. Apri **Telecomando** dal menu delle applicazioni: nel browser si apre la pagina con il QR code.
+3. Alla fine nel browser si apre la pagina con il QR code: inquadralo con il telefono, collegato allo stesso Wi-Fi.
+
+Fatto. Da ora Telecomando parte da solo ogni volta che accedi al PC. Per rivedere la pagina con il QR code, apri **Telecomando** dal menu delle applicazioni.
 
 Per disinstallarlo: `~/.local/share/telecomando/uninstall.sh`
 
@@ -65,8 +69,10 @@ macOS non è supportato.
 | Ctrl, Alt, Maiusc… una volta | Tenuto solo per il prossimo tasto |
 | Ctrl, Alt, Maiusc… due volte | Bloccato: es. Alt bloccato, poi Tab, Tab… per scegliere la finestra |
 
-Nel menu del browser del telefono scegli **Aggiungi a schermata Home**: la volta dopo Telecomando si apre come un'app.
+Nel menu del browser del telefono scegli **Aggiungi a schermata Home**. Da lì in poi, quando il PC è acceso, tocchi quell'icona e il telefono si collega da solo, come un'app.
 Nelle impostazioni (icona con i cursori) cambi velocità di puntatore e scorrimento, scorrimento naturale, tocco = clic e vibrazione.
+
+Telecomando parte quando accedi al tuo account sul PC (subito all'accensione, se il PC entra da solo nell'account). Se il telefono non trova più il PC dopo un cambio di router o di rete, inquadra di nuovo il QR code: la pagina sul PC mostra sempre l'indirizzo attuale.
 
 ## Privacy e sicurezza
 
@@ -114,6 +120,7 @@ python3 -m telecomando        # su Windows: py -m telecomando
 ```
 
 Su Linux, la prima volta, esegui anche `python3 -m telecomando --setup`.
+Avviato dal codice sorgente, Telecomando non attiva da solo l'avvio automatico: usa l'interruttore nella pagina del PC, oppure `--autostart on`.
 Test: `python3 -m unittest discover -s tests`
 
 ## Creare i file da scaricare

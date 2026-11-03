@@ -19,6 +19,7 @@
 
 - **Touchpad**: move with one finger, tap to click, scroll with two fingers (it keeps going if you flick), tap with two fingers for a right click, tap and drag to select.
 - **Keyboard**: type with the phone's own keyboard, autocorrect, suggestions, dictation, accents and emoji included. Plus Esc, arrows, F1–F12, Ctrl/Alt/Shift/Win (for one key or locked), shortcuts such as copy, paste and Alt+Tab, media keys and screen lock.
+- **Set up once**: scan the QR code the first time. From then on Telecomando starts with the PC, in the background, and the phone connects by itself.
 - **No app on the phone**: it is a page that your PC serves to the phone's browser.
 - **Private**: phone and PC talk directly over your Wi-Fi. No account, no cloud, no ads, nothing collected. Once downloaded, the program is all yours.
 
@@ -28,13 +29,14 @@ Get the latest version from the **[Releases page](../../releases/latest)**.
 
 ### Windows 10 and 11
 
-1. Download `Telecomando-…-windows-x64.zip` and extract it (right click → *Extract All*).
+1. Download `Telecomando-…-windows-x64.zip`. Right click on it → *Properties* → tick **Unblock** → *OK*, then extract it (right click → *Extract All*) into a folder that will stay there, e.g. Documents.
 2. Open **Telecomando.exe** in the extracted folder.
-   Windows may say *"Windows protected your PC"*, because the program is not signed with a paid certificate: click **More info → Run anyway**.
+   If Windows says *"Windows protected your PC"* (the program is not signed with a paid certificate), click **More info → Run anyway**.
 3. When Windows asks about the firewall, allow access on **private networks**.
 4. A page opens in your browser with a QR code: scan it with your phone, connected to the same Wi-Fi.
 
-On that page you can also stop Telecomando, make it start by itself when you log in, or create a new access code. To see it again, open Telecomando.exe again.
+That's all. From now on Telecomando starts by itself, in the background, every time you log in: there is nothing to open on the PC.
+To see the page with the QR code again, open Telecomando.exe again. On that page you can also stop Telecomando, turn off the start at login or create a new access code. If you move the folder, open Telecomando.exe once from its new place.
 
 ### Linux
 
@@ -46,7 +48,9 @@ For 64-bit PCs with a recent distribution (Ubuntu 22.04 or later, Debian 12, Fed
    ./install.sh
    ```
    It asks for your password once. Linux wants permission before a program may create a virtual mouse and keyboard; if a firewall (ufw or firewalld) is on, the setup also lets your local network reach Telecomando.
-3. Open **Telecomando** from the applications menu: the page with the QR code opens in your browser.
+3. At the end, the page with the QR code opens in your browser: scan it with your phone, connected to the same Wi-Fi.
+
+That's all. From now on Telecomando starts by itself every time you log in. To see the page with the QR code again, open **Telecomando** from the applications menu.
 
 To uninstall: `~/.local/share/telecomando/uninstall.sh`
 
@@ -65,8 +69,10 @@ macOS is not supported.
 | Ctrl, Alt, Shift… once | Held for the next key only |
 | Ctrl, Alt, Shift… twice | Locked: e.g. lock Alt, then Tab, Tab… to pick a window |
 
-In the phone browser's menu choose **Add to Home screen**: next time Telecomando opens like an app.
+In the phone browser's menu choose **Add to Home screen**. From then on, whenever the PC is on, tap that icon and the phone connects by itself, like an app.
 The settings (sliders icon) change pointer and scroll speed, natural scrolling, tap to click and vibration.
+
+Telecomando starts when you log in to your account on the PC (right at power-on if your PC logs in by itself). If the phone stops finding the PC after a change of router or network, scan the QR code again: the page on the PC always shows the current address.
 
 ## Privacy and security
 
@@ -114,6 +120,7 @@ python3 -m telecomando        # on Windows: py -m telecomando
 ```
 
 On Linux, the first time, run `python3 -m telecomando --setup` too.
+Started from the source code, Telecomando does not turn on the start at login by itself: use the switch on the PC page, or `--autostart on`.
 Tests: `python3 -m unittest discover -s tests`
 
 ## Build the downloads
